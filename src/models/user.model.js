@@ -6,7 +6,7 @@ const userSchema = new Schema(
     {
         username: {
             type: String,
-            required: true,
+            required: [true, "Username is required"],
             unique: true,
             lowercase: true,
             trim: true, 
@@ -14,23 +14,29 @@ const userSchema = new Schema(
         },
         email: {
             type: String,
-            required: true,
+            required: [true, "Email is required"],
             unique: true,
             lowecase: true,
             trim: true, 
         },
         fullName: {
             type: String,
-            required: true,
+            required: [true, "Full name is required"],
             trim: true, 
             index: true
         },
         avatar: {
-            type: String, // cloudinary url
+            type:{
+                public_id: String,
+                url: String,
+            },
             required: true,
         },
         coverImage: {
-            type: String, // cloudinary url
+            type: {
+                public_id: String,
+                url: String //cloudinary url
+            },
         },
         watchHistory: [
             {
@@ -61,6 +67,10 @@ userSchema.pre("save", async function (next) {
 
 userSchema.methods.isPasswordCorrect = async function(password){
     return await bcrypt.compare(password, this.password)
+}
+
+userSchema.methods.comparePassword = async function(plainTextPassword){
+    return await bcrypt.compare(plainTextPassword, this.password)
 }
 
 userSchema.methods.generateAccessToken = function(){
