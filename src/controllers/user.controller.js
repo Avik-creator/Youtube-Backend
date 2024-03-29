@@ -1,7 +1,7 @@
 import { asyncHandler } from "../utils/asyncHandler.js";
 import {ApiError} from "../utils/ApiError.js"
 import { User} from "../models/user.model.js"
-import {uploadOnCloudinary} from "../utils/cloudinary.js"
+import {uploadOnCloudinary, deleteOnCloudinary} from "../utils/cloudinary.js"
 import { ApiResponse } from "../utils/ApiResponse.js";
 import jwt from "jsonwebtoken"
 import mongoose from "mongoose";
@@ -67,11 +67,11 @@ const registerUser = asyncHandler( async (req, res) => {
         throw new ApiError(400, "Avatar file is required")
     }
 
-    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    const avatar = await uploadOnCloudinary(avatarLocalPath).catch((error) => console.error("Error while uploading the Avatar.", error))
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
     if (!avatar) {
-        throw new ApiError(400, "Avatar file is required")
+        throw new ApiError(400, "Avatar file is required for the Account Creation.")
     }
    
 
@@ -99,25 +99,11 @@ const registerUser = asyncHandler( async (req, res) => {
 } )
 
 const loginUser = asyncHandler(async (req, res) =>{
-    // req body -> data
-    // username or email
-    //find the user
-    //password check
-    //access and referesh token
-    //send cookie
-
     const {email, username, password} = req.body
-    console.log(email);
 
     if (!username && !email) {
         throw new ApiError(400, "username or email is required")
     }
-    
-    // Here is an alternative of above code based on logic discussed in video:
-    // if (!(username || email)) {
-    //     throw new ApiError(400, "username or email is required")
-        
-    // }
 
     const user = await User.findOne({
         $or: [{username}, {email}]
@@ -163,7 +149,7 @@ const logoutUser = asyncHandler(async(req, res) => {
         req.user._id,
         {
             $unset: {
-                refreshToken: 1 // this removes the field from document
+                refreshToken: 1, // This Removes the Field from the Database Document.
             }
         },
         {
@@ -233,9 +219,6 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 const changeCurrentPassword = asyncHandler(async(req, res) => {
     const {oldPassword, newPassword} = req.body
-
-    
-
     const user = await User.findById(req.user?._id)
     const isPasswordCorrect = await user.isPasswordCorrect(oldPassword)
 
@@ -293,8 +276,6 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
         throw new ApiError(400, "Avatar file is missing")
     }
 
-    //TODO: delete old image - assignment
-
     const avatar = await uploadOnCloudinary(avatarLocalPath)
 
     if (!avatar.url) {
@@ -302,20 +283,30 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
         
     }
 
-    const user = await User.findByIdAndUpdate(
+    const user = await User.findById(req.user._id).select("avatar");
+
+
+    const avatarToDelete = user.avatar.public_id;
+    const updateUserWithUpdatedAvatar = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set:{
-                avatar: avatar.url
+                avatar: avatar.url,
+                url:avatar.secure_url
             }
         },
         {new: true}
     ).select("-password")
 
+    if(avatarToDelete && updateUserAvatar.avatar.public_id){
+        await deleteOnCloudinary(avatarToDelete);
+    }
+    
+
     return res
     .status(200)
     .json(
-        new ApiResponse(200, user, "Avatar image updated successfully")
+        new ApiResponse(200, updateUserWithUpdatedAvatar, "Avatar image updated successfully")
     )
 })
 

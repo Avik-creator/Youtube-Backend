@@ -1,6 +1,7 @@
 import express from "express"
 import cors from "cors"
 import cookieParser from "cookie-parser"
+import morgan from "morgan"
 
 const app = express()
 
@@ -9,10 +10,11 @@ app.use(cors({
     credentials: true
 }))
 
-app.use(express.json({limit: "16kb"}))
-app.use(express.urlencoded({extended: true, limit: "16kb"}))
+app.use(express.json({limit: "50mb"}))
+app.use(express.urlencoded({extended: true, limit: "50mb"}))
 app.use(express.static("public"))
 app.use(cookieParser())
+app.use(morgan("dev")); // HTTP Request Logger.
 
 
 //routes import
@@ -36,7 +38,5 @@ app.use("/api/v1/comments", commentRouter)
 app.use("/api/v1/likes", likeRouter)
 app.use("/api/v1/playlist", playlistRouter)
 app.use("/api/v1/dashboard", dashboardRouter)
-
-// http://localhost:8000/api/v1/users/register
 
 export { app }
