@@ -36,7 +36,6 @@ const registerUser = asyncHandler(async (req, res) => {
   // return res
 
   const { fullName, email, username, password } = req.body;
-
   if (
     [fullName, email, username, password].some((field) => field?.trim() === "")
   ) {
@@ -80,8 +79,14 @@ const registerUser = asyncHandler(async (req, res) => {
 
   const user = await User.create({
     fullName,
-    avatar: avatar.url,
-    coverImage: coverImage?.url || "",
+    avatar: {
+      url: avatar?.url,
+      public_id: avatar?.public_id || "",
+    },
+    coverImage: {
+      url: coverImage?.url,
+      public_id: coverImage?.public_id || "",
+    },
     email,
     password,
     username: username.toLowerCase(),
@@ -226,7 +231,7 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
 
 const changeCurrentPassword = asyncHandler(async (req, res) => {
   const { oldPassword, newPassword } = req.body;
-  const user = await User.findById(req.user?._id);
+  const user = await User.findById(req.user?._id).select("+password");
   const isPasswordCorrect = await user.isPasswordCorrect(oldPassword);
 
   if (!isPasswordCorrect) {
